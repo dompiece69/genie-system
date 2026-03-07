@@ -1,5 +1,27 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1772913686046,
+      "tag": "0000_worried_mariko_yashida",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1772913816486,
+      "tag": "0001_bitter_mesmero",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1772913829299,
+      "tag": "0002_futuristic_gargoyle",
+      "breakpoints": true
+    }
+  ]
 }
