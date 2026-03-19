@@ -41,7 +41,7 @@ export default function ScanDashboard() {
   const { data: sources = [], refetch: refetchSources } = trpc.scanner.getSources.useQuery();
   const { data: jobs = [], refetch: refetchJobs } = trpc.scanner.getRecentJobs.useQuery({ limit: 20 });
 
-  const triggerScan = trpc.scanner.triggerScanPublic.useMutation({
+  const triggerScan = trpc.scanner.triggerScan.useMutation({
     onSuccess: () => {
       toast.success("Scan started! Results will appear shortly.");
       setScanning(true);

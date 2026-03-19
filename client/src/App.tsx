@@ -13,6 +13,8 @@ import ProductDetail from "./pages/ProductDetail";
 import Analytics from "./pages/Analytics";
 import AdminPanel from "./pages/AdminPanel";
 import Download from "./pages/Download";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 function Router() {
   return (
@@ -26,6 +28,8 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/admin" component={AdminPanel} />
       <Route path="/download/:token" component={Download} />
+      <Route path="/terms" component={TermsOfService} />
+      <Route path="/privacy" component={PrivacyPolicy} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

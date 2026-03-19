@@ -18,7 +18,7 @@ import {
 } from "./db";
 import { runScan } from "./scanner";
 import { generateSolution, publishSolutionAsProduct, prepareSolutionFile, generateDownloadToken } from "./solutionGenerator";
-import { nanoid } from "nanoid";
+import { createCheckoutSession, isStripeEnabled } from "./stripe";
 
 // Admin guard middleware
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -77,12 +77,6 @@ export const appRouter = router({
         runScan(input.sourceId).catch(console.error);
         return { message: "Scan started", status: "running" };
       }),
-
-    triggerScanPublic: publicProcedure.input(z.object({ sourceId: z.number().optional() }))
-      .mutation(async ({ input }) => {
-        runScan(input.sourceId).catch(console.error);
-        return { message: "Scan started", status: "running" };
-      }),
   }),
 
   // ---- Pain Points ----
@@ -111,13 +105,6 @@ export const appRouter = router({
     }),
 
     generateSolution: adminProcedure.input(z.object({
-      painPointId: z.number(),
-      type: z.enum(["automation_script", "pdf_guide", "mini_tool", "checklist", "template", "video_script"]).optional(),
-    })).mutation(async ({ input }) => {
-      return generateSolution(input.painPointId, input.type);
-    }),
-
-    generateSolutionPublic: publicProcedure.input(z.object({
       painPointId: z.number(),
       type: z.enum(["automation_script", "pdf_guide", "mini_tool", "checklist", "template", "video_script"]).optional(),
     })).mutation(async ({ input }) => {
@@ -154,26 +141,7 @@ export const appRouter = router({
       return { success: true };
     }),
 
-    reviewPublic: publicProcedure.input(z.object({
-      id: z.number(),
-      status: z.enum(["approved", "rejected"]),
-      reviewNotes: z.string().optional(),
-      title: z.string().optional(),
-      description: z.string().optional(),
-      content: z.string().optional(),
-    })).mutation(async ({ input }) => {
-      const { id, ...data } = input;
-      await updateSolution(id, data);
-      return { success: true };
-    }),
-
     publish: adminProcedure.input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const productId = await publishSolutionAsProduct(input.id);
-        return { success: true, productId };
-      }),
-
-    publishPublic: publicProcedure.input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const productId = await publishSolutionAsProduct(input.id);
         return { success: true, productId };
@@ -190,11 +158,6 @@ export const appRouter = router({
     })).query(({ input }) => getProducts({ ...input, published: true })),
 
     allProducts: adminProcedure.input(z.object({
-      limit: z.number().default(50),
-      offset: z.number().default(0),
-    })).query(({ input }) => getProducts(input)),
-
-    allProductsPublic: publicProcedure.input(z.object({
       limit: z.number().default(50),
       offset: z.number().default(0),
     })).query(({ input }) => getProducts(input)),
@@ -226,23 +189,8 @@ export const appRouter = router({
       return updateProduct(id, data);
     }),
 
-    updateProductPublic: publicProcedure.input(z.object({
-      id: z.number(),
-      title: z.string().optional(),
-      description: z.string().optional(),
-      shortDescription: z.string().optional(),
-      price: z.number().optional(),
-      category: z.string().optional(),
-      tags: z.array(z.string()).optional(),
-      isPublished: z.boolean().optional(),
-      isFeatured: z.boolean().optional(),
-    })).mutation(({ input }) => {
-      const { id, ...data } = input;
-      return updateProduct(id, data);
-    }),
-
-    // Checkout (simulated - no real payment)
-    checkout: publicProcedure.input(z.object({
+    // Create a Stripe Checkout Session for real payment processing
+    createCheckoutSession: publicProcedure.input(z.object({
       productId: z.number(),
       buyerEmail: z.string().email(),
       buyerName: z.string().optional(),
@@ -252,39 +200,30 @@ export const appRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
       }
 
-      const downloadToken = await generateDownloadToken();
-      const downloadExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      if (!isStripeEnabled()) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Payment processing is not configured. Please contact support.",
+        });
+      }
 
-      const order = await createOrder({
+      const { url, downloadToken } = await createCheckoutSession({
         productId: input.productId,
-        userId: ctx.user?.id,
         buyerEmail: input.buyerEmail,
         buyerName: input.buyerName,
-        amount: product.price,
-        status: 'completed',
-        paymentMethod: 'demo',
-        deliveryStatus: 'pending',
-        downloadToken,
-        downloadExpiresAt,
+        userId: ctx.user?.id,
       });
 
-      // Update product sales count
-      await updateProduct(input.productId, { salesCount: (product.salesCount || 0) + 1 });
-      await logEvent('order_placed', order.id, 'order', { productId: input.productId, amount: product.price });
-      await logEvent('order_completed', order.id, 'order', { productId: input.productId, amount: product.price });
-
-      return {
-        orderId: order.id,
-        downloadToken,
-        downloadUrl: `/api/download/${downloadToken}`,
-        message: "Order completed! Check your email for download link.",
-      };
+      return { checkoutUrl: url, downloadToken };
     }),
 
     getDownload: publicProcedure.input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
         const order = await getOrderByToken(input.token);
         if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid download token" });
+        if (order.status !== 'completed') {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Payment not yet confirmed" });
+        }
         if (order.downloadExpiresAt && new Date() > order.downloadExpiresAt) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Download link expired" });
         }
@@ -313,11 +252,6 @@ export const appRouter = router({
       limit: z.number().default(50),
     })).query(({ input }) => getOrders(input)),
 
-    listPublic: publicProcedure.input(z.object({
-      status: z.string().optional(),
-      limit: z.number().default(50),
-    })).query(({ input }) => getOrders(input)),
-
     getById: adminProcedure.input(z.object({ id: z.number() }))
       .query(({ input }) => getOrderById(input.id)),
   }),
@@ -340,22 +274,9 @@ export const appRouter = router({
       description: z.string().optional(),
     })).mutation(({ input }) => setAppSetting(input.key, input.value, input.description)),
 
-    setSettingPublic: publicProcedure.input(z.object({
-      key: z.string(),
-      value: z.string(),
-      description: z.string().optional(),
-    })).mutation(({ input }) => setAppSetting(input.key, input.value, input.description)),
-
     getTemplates: publicProcedure.query(() => getSolutionTemplates()),
 
     createTemplate: adminProcedure.input(z.object({
-      name: z.string(),
-      type: z.enum(["automation_script", "pdf_guide", "mini_tool", "checklist", "template", "video_script"]),
-      promptTemplate: z.string(),
-      defaultPrice: z.number().optional(),
-    })).mutation(({ input }) => createSolutionTemplate(input)),
-
-    createTemplatePublic: publicProcedure.input(z.object({
       name: z.string(),
       type: z.enum(["automation_script", "pdf_guide", "mini_tool", "checklist", "template", "video_script"]),
       promptTemplate: z.string(),

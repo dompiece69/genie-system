@@ -28,7 +28,7 @@ export default function AdminPanel() {
   const { data: sources = [], refetch: refetchSources } = trpc.scanner.getSources.useQuery();
   const { data: summary } = trpc.analytics.summary.useQuery();
 
-  const triggerScan = trpc.scanner.triggerScanPublic.useMutation({
+  const triggerScan = trpc.scanner.triggerScan.useMutation({
     onSuccess: () => toast.success("Full scan triggered across all sources!"),
     onError: (e) => toast.error(e.message),
   });

@@ -257,7 +257,8 @@ export default function Home() {
           <div className="flex gap-4 text-xs text-muted-foreground">
             <Link href="/marketplace" className="hover:text-foreground">Marketplace</Link>
             <Link href="/analytics" className="hover:text-foreground">Analytics</Link>
-            <Link href="/admin" className="hover:text-foreground">Admin</Link>
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
           </div>
         </div>
       </footer>

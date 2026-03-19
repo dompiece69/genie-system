@@ -56,7 +56,7 @@ export default function Solutions() {
     limit: 100,
   });
 
-  const reviewSolution = trpc.solutions.reviewPublic.useMutation({
+  const reviewSolution = trpc.solutions.review.useMutation({
     onSuccess: (_, vars) => {
       toast.success(`Solution ${vars.status === 'approved' ? 'approved' : 'rejected'}!`);
       setSelectedSolution(null);
@@ -65,7 +65,7 @@ export default function Solutions() {
     onError: (e) => toast.error(e.message),
   });
 
-  const publishSolution = trpc.solutions.publishPublic.useMutation({
+  const publishSolution = trpc.solutions.publish.useMutation({
     onMutate: ({ id }) => setPublishingId(id),
     onSuccess: (data) => {
       toast.success("Solution published to marketplace!");
