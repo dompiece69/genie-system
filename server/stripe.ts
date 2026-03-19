@@ -66,7 +66,7 @@ export async function createCheckoutSession(opts: {
           unit_amount: Math.round(product.price * 100),
           product_data: {
             name: product.title,
-            description: product.shortDescription ?? product.description.substring(0, 255),
+            description: product.shortDescription ?? (product.description?.substring(0, 255) ?? undefined),
           },
         },
       },
