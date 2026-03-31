@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: genie-system
+    env: node
+    buildCommand: npm install -g pnpm && pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
