@@ -55,6 +55,14 @@ vi.mock("./solutionGenerator", () => ({
   generateDownloadToken: vi.fn().mockReturnValue("test-token-abc123"),
 }));
 
+vi.mock("./stripe", () => ({
+  createCheckoutSession: vi.fn().mockResolvedValue({
+    url: "https://checkout.stripe.com/pay/cs_test_xxx",
+    downloadToken: "test-token-abc123",
+  }),
+  isStripeEnabled: vi.fn().mockReturnValue(true),
+}));
+
 function createPublicCtx(): TrpcContext {
   return {
     user: null,
@@ -108,10 +116,11 @@ describe("scanner router", () => {
     expect(Array.isArray(result)).toBe(true);
   });
 
-  it("triggerScanPublic returns running status", async () => {
+  it("triggerScan requires admin", async () => {
     const caller = appRouter.createCaller(createPublicCtx());
-    const result = await caller.scanner.triggerScanPublic({});
-    expect(result.status).toBe("running");
+    await expect(
+      caller.scanner.triggerScan({})
+    ).rejects.toThrow();
   });
 
   it("createSource requires admin", async () => {
@@ -125,6 +134,12 @@ describe("scanner router", () => {
     const caller = appRouter.createCaller(createAdminCtx());
     const result = await caller.scanner.createSource({ name: "Test Reddit", type: "reddit" });
     expect(result).toBeDefined();
+  });
+
+  it("admin can trigger scan", async () => {
+    const caller = appRouter.createCaller(createAdminCtx());
+    const result = await caller.scanner.triggerScan({});
+    expect(result.status).toBe("running");
   });
 });
 
@@ -140,6 +155,13 @@ describe("painPoints router", () => {
     const result = await caller.painPoints.getNicheStats();
     expect(Array.isArray(result)).toBe(true);
   });
+
+  it("generateSolution requires admin", async () => {
+    const caller = appRouter.createCaller(createPublicCtx());
+    await expect(
+      caller.painPoints.generateSolution({ painPointId: 1 })
+    ).rejects.toThrow();
+  });
 });
 
 describe("solutions router", () => {
@@ -147,6 +169,20 @@ describe("solutions router", () => {
     const caller = appRouter.createCaller(createPublicCtx());
     const result = await caller.solutions.list({ limit: 10 });
     expect(Array.isArray(result)).toBe(true);
+  });
+
+  it("review requires admin", async () => {
+    const caller = appRouter.createCaller(createPublicCtx());
+    await expect(
+      caller.solutions.review({ id: 1, status: "approved" })
+    ).rejects.toThrow();
+  });
+
+  it("publish requires admin", async () => {
+    const caller = appRouter.createCaller(createPublicCtx());
+    await expect(
+      caller.solutions.publish({ id: 1 })
+    ).rejects.toThrow();
   });
 });
 
@@ -163,10 +199,42 @@ describe("marketplace router", () => {
     expect(Array.isArray(result)).toBe(true);
   });
 
-  it("checkout validates email", async () => {
+  it("createCheckoutSession validates email", async () => {
     const caller = appRouter.createCaller(createPublicCtx());
     await expect(
-      caller.marketplace.checkout({ productId: 1, buyerEmail: "not-an-email", buyerName: "Test" })
+      caller.marketplace.createCheckoutSession({ productId: 1, buyerEmail: "not-an-email", buyerName: "Test" })
+    ).rejects.toThrow();
+  });
+
+  it("createCheckoutSession returns Stripe URL for valid product and email", async () => {
+    const { getProductById } = await import("./db");
+    vi.mocked(getProductById).mockResolvedValueOnce({
+      id: 1, title: "Test Product", description: "desc", shortDescription: "short",
+      price: 9.99, category: "General", tags: [], isPublished: true, isFeatured: false,
+      salesCount: 0, viewCount: 0, rating: 0, solutionId: 1,
+      coverImageUrl: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+    const caller = appRouter.createCaller(createPublicCtx());
+    const result = await caller.marketplace.createCheckoutSession({
+      productId: 1,
+      buyerEmail: "buyer@example.com",
+      buyerName: "Test Buyer",
+    });
+    expect(result.checkoutUrl).toContain("checkout.stripe.com");
+  });
+
+  it("allProducts requires admin", async () => {
+    const caller = appRouter.createCaller(createPublicCtx());
+    await expect(
+      caller.marketplace.allProducts({ limit: 10 })
+    ).rejects.toThrow();
+  });
+
+  it("updateProduct requires admin", async () => {
+    const caller = appRouter.createCaller(createPublicCtx());
+    await expect(
+      caller.marketplace.updateProduct({ id: 1, price: 99 })
     ).rejects.toThrow();
   });
 });
@@ -191,3 +259,20 @@ describe("analytics router", () => {
     expect(Array.isArray(result)).toBe(true);
   });
 });
+
+describe("admin router security", () => {
+  it("setSetting requires admin", async () => {
+    const caller = appRouter.createCaller(createPublicCtx());
+    await expect(
+      caller.admin.setSetting({ key: "test", value: "value" })
+    ).rejects.toThrow();
+  });
+
+  it("createTemplate requires admin", async () => {
+    const caller = appRouter.createCaller(createPublicCtx());
+    await expect(
+      caller.admin.createTemplate({ name: "Test", type: "pdf_guide", promptTemplate: "test" })
+    ).rejects.toThrow();
+  });
+});
+

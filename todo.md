@@ -17,10 +17,12 @@
 - [x] Solution generator UI (generate, preview, edit solutions)
 - [x] Solution approval interface (review, approve/reject, publish to marketplace)
 - [x] Marketplace storefront (product listings, categories, search, pricing, featured)
-- [x] Product detail page (preview, purchase, checkout dialog)
+- [x] Product detail page (preview, purchase, Stripe checkout)
 - [x] Download page (token-based secure download)
 - [x] Analytics dashboard (KPIs, revenue chart, pipeline funnel, niche pie, live feed)
 - [x] Admin control panel (scanner config, solution settings, marketplace settings, pricing rules)
+- [x] Terms of Service page
+- [x] Privacy Policy page
 
 ## Design System
 - [x] Dark futuristic theme (deep space blacks, electric violet/cyan, OKLCH colors)
@@ -28,6 +30,14 @@
 - [x] Sidebar navigation (AppLayout component)
 - [x] Reusable stat cards, charts, badges, status indicators
 
+## Public Sales Readiness
+- [x] Stripe payment integration (real checkout sessions, webhook confirmation)
+- [x] Security hardening: removed all unauthenticated bypass endpoints for admin operations
+- [x] Owner sale notification via notification service on each completed payment
+- [x] Download security: downloads blocked until payment confirmed (order.status === 'completed')
+- [x] .env.example with all required environment variables documented
+- [x] Terms of Service and Privacy Policy pages linked from footer
+
 ## Testing
-- [x] 17 passing backend router tests (auth, scanner, painPoints, solutions, marketplace, analytics)
+- [x] 26 passing backend router tests (auth, scanner, painPoints, solutions, marketplace, analytics, admin security)
 - [x] Auth logout test

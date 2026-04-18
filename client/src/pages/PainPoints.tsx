@@ -43,7 +43,7 @@ export default function PainPoints() {
 
   const { data: nicheStats = [] } = trpc.painPoints.getNicheStats.useQuery();
 
-  const generateSolution = trpc.painPoints.generateSolutionPublic.useMutation({
+  const generateSolution = trpc.painPoints.generateSolution.useMutation({
     onMutate: ({ painPointId }) => setGeneratingFor(painPointId),
     onSuccess: (data) => {
       toast.success(`Solution generated! Review it in the Solutions tab.`);
