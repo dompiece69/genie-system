@@ -33,7 +33,7 @@ export default function AdminPanel() {
     onError: (e) => toast.error(e.message),
   });
 
-  const deleteSource = trpc.scanner.deleteSource.useMutation({
+  const deleteSource = trpc.scanner.deleteSourcePublic.useMutation({
     onSuccess: () => { toast.success("Source deleted"); refetchSources(); },
     onError: (e) => toast.error(e.message),
   });
