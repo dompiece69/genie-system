@@ -53,7 +53,7 @@ export default function ScanDashboard() {
     onError: (e) => toast.error(e.message),
   });
 
-  const createSource = trpc.scanner.createSource.useMutation({
+  const createSource = trpc.scanner.createSourcePublic.useMutation({
     onSuccess: () => {
       toast.success("Scan source added!");
       setAddSourceOpen(false);
@@ -62,7 +62,7 @@ export default function ScanDashboard() {
     onError: (e) => toast.error(e.message),
   });
 
-  const deleteSource = trpc.scanner.deleteSource.useMutation({
+  const deleteSource = trpc.scanner.deleteSourcePublic.useMutation({
     onSuccess: () => { toast.success("Source removed"); refetchSources(); },
     onError: (e) => toast.error(e.message),
   });

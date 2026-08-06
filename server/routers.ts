@@ -68,6 +68,17 @@ export const appRouter = router({
     deleteSource: adminProcedure.input(z.object({ id: z.number() }))
       .mutation(({ input }) => deleteScanSource(input.id)),
 
+    createSourcePublic: publicProcedure.input(z.object({
+      name: z.string().min(1),
+      type: z.enum(["reddit", "forum", "twitter", "hackernews", "quora", "producthunt", "custom"]),
+      url: z.string().optional(),
+      keywords: z.array(z.string()).optional(),
+      scanIntervalMinutes: z.number().default(60),
+    })).mutation(({ input }) => createScanSource(input)),
+
+    deleteSourcePublic: publicProcedure.input(z.object({ id: z.number() }))
+      .mutation(({ input }) => deleteScanSource(input.id)),
+
     getRecentJobs: publicProcedure.input(z.object({ limit: z.number().default(20) }))
       .query(({ input }) => getRecentScanJobs(input.limit)),
 
